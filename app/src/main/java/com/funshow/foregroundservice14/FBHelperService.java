@@ -4,60 +4,57 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.media.projection.MediaProjection;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import java.util.UUID;
 public class FBHelperService extends Service {
-    private static final String CHANNEL_ID = "LiveStreamChannel";
-    protected int notificationID = 1;
-    protected String ID;
-    protected Handler handler;
+    private static final String CHANNEL_ID_MEDIA_PROJECTION = "CHANNEL_ID_MEDIA_PROJECTION";
+    private static final String CHANNEL_NAME_MEDIA_PROJECTION = "屏幕录制";
+    private static final int NOTIFICATION_ID_MEDIA_PROJECTION = 1;
+    private NotificationManager NOTIFICATION_MANAGER ;
+    public static boolean running = false;
 
     public void onCreate() {
         Log.i("APPLifeCycle" , "FBHelperService onCreate");
         super.onCreate();
-        this.handler = new Handler();
-        this.ID = UUID.randomUUID().toString();
+        try {
+            NOTIFICATION_MANAGER = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+            Notification.Builder notificationBuilder = new Notification.Builder(this)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle("服务已启动");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(CHANNEL_ID_MEDIA_PROJECTION, CHANNEL_NAME_MEDIA_PROJECTION, NotificationManager.IMPORTANCE_HIGH);
+                NOTIFICATION_MANAGER.createNotificationChannel(channel);
+
+                notificationBuilder.setChannelId(CHANNEL_ID_MEDIA_PROJECTION);
+            }
+            Notification notification = notificationBuilder.build();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID_MEDIA_PROJECTION, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+            } else {
+                startForeground(NOTIFICATION_ID_MEDIA_PROJECTION, notification);
+            }
+        } catch (Exception e) {
+            Log.i("FunshowError" , "e = " + e);
+        }
+        running = true;
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        try {
-            Log.i("APPLifeCycle" , "FBHelperService onStartCommand");
-            // 建立 NotificationChannel (Android 8.0+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                NotificationChannel channel = new NotificationChannel(
-                        CHANNEL_ID,
-                        "Foreground Service Channel",
-                        NotificationManager.IMPORTANCE_DEFAULT
-                );
-                NotificationManager manager = getSystemService(NotificationManager.class);
-                if (manager != null) {
-                    manager.createNotificationChannel(channel);
-                }
-            }
-
-            // 建立前景通知
-            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Service Running")
-                    .setContentText("Your service is running in the foreground")
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .build();
-
-            // 在 5 秒內調用 startForeground() 並顯示通知
-            startForeground(999 , notification);
-        } catch (Exception e ) {
-            Log.i("FunshowError" , "FBHelperService onStartCommand e = " + e);
-        }
-
-        // 在此處進行你的其他工作
-        return START_NOT_STICKY;
+    public void onDestroy() {
+        running = false;
+        super.onDestroy();
     }
 
     @Nullable

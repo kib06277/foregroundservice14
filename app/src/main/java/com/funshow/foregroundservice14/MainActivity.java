@@ -1,5 +1,7 @@
 package com.funshow.foregroundservice14;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -7,10 +9,14 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -59,13 +65,25 @@ public class MainActivity extends AppCompatActivity {
             login.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    checkAndRequestPermissions();
+                    MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+                    resultLauncher_createScreenCapture.launch(projectionManager.createScreenCaptureIntent());
                 }
             });
         } catch (Exception e) {
             Log.i("FunshowError" , "LoginActivity connectWebSocket e = " + e);
         }
     }
+
+    // Photo result handling
+    private ActivityResultLauncher<Intent> resultLauncher_createScreenCapture = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Log.d("ActivityLog", "MediaProjection granted");
+                    checkAndRequestPermissions();
+                }
+            }
+    );
 
     private void checkAndRequestPermissions() {
         Log.i("APPLifeCycle" , "MainActivity checkAndRequestPermissions");
@@ -242,6 +260,7 @@ public class MainActivity extends AppCompatActivity {
                         allPermissionsGranted = false;
                     }
 
+                    Log.d("ActivityLog", "allPermissionsGranted = " + allPermissionsGranted);
                     if (allPermissionsGranted) {
                         // 所有權限都已獲得，可以執行需要這些權限的操作
                         startMyForegroundService();
